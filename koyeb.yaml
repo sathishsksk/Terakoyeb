@@ -1,0 +1,35 @@
+name: terabox-bot
+services:
+  - name: terabox-bot
+    type: WEB
+    instance_type: nano
+    regions:
+      - was
+    ports:
+      - port: 8000
+        protocol: http
+    health_checks:
+      - http:
+          path: /health
+          port: 8000
+    docker:
+      dockerfile: Dockerfile
+    env:
+      - key: BOT_TOKEN
+        scope: build_and_runtime
+        type: secret
+      - key: APP_ID
+        scope: build_and_runtime
+        type: secret
+      - key: APP_HASH
+        scope: build_and_runtime
+        type: secret
+      - key: TERABOX_COOKIE
+        scope: build_and_runtime
+        type: secret
+      - key: WEBAPP_URL
+        scope: build_and_runtime
+        value: "https://teraboxsk.pages.dev"
+      - key: PORT
+        scope: build_and_runtime
+        value: "8000"
