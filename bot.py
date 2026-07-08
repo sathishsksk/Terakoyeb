@@ -45,11 +45,43 @@ def is_terabox_url(text: str) -> bool:
 def get_surl(url: str) -> str | None:
     try:
         u = urlparse(url.strip())
+
+        # ?surl= query param (1024tera.com style)
         surl = parse_qs(u.query).get("surl", [None])[0]
         if surl:
             return surl
+
+        # /s/XXXX path style — TeraBox sometimes prefixes surl with a
+        # single digit version marker e.g. /s/1UpFpZT... → surl=UpFpZT...
+        # So we fetch the share page and read the canonical URL which
+        # always contains the correct surl without the prefix.
         m = re.search(r"/s/([a-zA-Z0-9_-]+)", u.path)
-        return m.group(1) if m else None
+        if not m:
+            return None
+
+        raw = m.group(1)
+
+        # Try to get correct surl from page canonical (most reliable)
+        try:
+            r = requests.get(url.strip(), timeout=8, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+            }, allow_redirects=True)
+            # canonical: <link rel="canonical" href="...?surl=XXXX"/>
+            canon = re.search(r'surl=([a-zA-Z0-9_-]+)', r.text)
+            if canon:
+                return canon.group(1)
+            # og:url fallback
+            og = re.search(r'og:url.*?surl=([a-zA-Z0-9_-]+)', r.text)
+            if og:
+                return og.group(1)
+        except Exception:
+            pass
+
+        # Fallback: strip a single leading digit if present
+        if raw and raw[0].isdigit():
+            return raw[1:]
+        return raw
+
     except Exception:
         return None
 
